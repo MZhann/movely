@@ -2,9 +2,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Script from "next/script";
-import Menu from "../../../../components/menu";
+import Menu from "../../../components/menu";
 import axios from "axios";
-import { useToast } from "../../../../components/ui/use-toast";
+import { useToast } from "../../../components/ui/use-toast";
 
 interface Order {
   _id: string;

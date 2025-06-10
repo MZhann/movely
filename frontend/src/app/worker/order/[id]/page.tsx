@@ -64,60 +64,6 @@ export default function OrderPage() {
     fetchOrder();
   }, [params.id, router, toast]);
 
-  useEffect(() => {
-    if (!order || !mapContainerRef.current) return;
-
-    const initMap = () => {
-      const ymaps = (window as any).ymaps;
-      if (!ymaps) return;
-
-      const newMap = new ymaps.Map(mapContainerRef.current, {
-        center: [43.222, 76.8512], // Default to Almaty
-        zoom: 12,
-      });
-
-      // Add destination markers
-      const [startLat, startLng] = order.destination_a_coordinates
-        .split(",")
-        .map(Number);
-      const [endLat, endLng] = order.destination_b_coordinates
-        .split(",")
-        .map(Number);
-
-      const startMarker = new ymaps.Placemark([startLat, startLng], {
-        balloonContent: "Pickup location",
-      });
-      const endMarker = new ymaps.Placemark([endLat, endLng], {
-        balloonContent: "Destination",
-      });
-
-      newMap.geoObjects.add(startMarker);
-      newMap.geoObjects.add(endMarker);
-
-      // Create route
-      ymaps
-        .route(
-          [
-            [startLat, startLng],
-            [endLat, endLng],
-          ],
-          {
-            mapStateAutoApply: true,
-          }
-        )
-        .then((route: any) => {
-          const distance = route.getHumanLength();
-          setRouteDistance(distance);
-        });
-
-      setMap(newMap);
-    };
-
-    if ((window as any).ymaps) {
-      initMap();
-    }
-  }, [order]);
-
   const startLocationUpdates = () => {
     if (locationInterval) return;
 
@@ -146,7 +92,7 @@ export default function OrderPage() {
       } catch (error) {
         console.error("Error updating location:", error);
       }
-    }, 10000); // Update every 10 seconds
+    }, 10000);
 
     setLocationInterval(interval);
   };
@@ -167,7 +113,6 @@ export default function OrderPage() {
         return;
       }
 
-      // Get current location
       const position = await new Promise<GeolocationPosition>(
         (resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject);
@@ -341,8 +286,62 @@ export default function OrderPage() {
       </div>
 
       <Script
-        src="https://api-maps.yandex.ru/2.1/?apikey=YOUR_API_KEY&lang=en_US"
+        src="https://api-maps.yandex.ru/2.1/?apikey=890ebac0-eb58-40dc-9ecd-9fd51d224e0e&lang=en_US"
         strategy="afterInteractive"
+        onLoad={() => {
+          if (order && mapContainerRef.current) {
+            window.ymaps.ready(() => {
+              const initMap = () => {
+                if (map) {
+                  map.destroy();
+                }
+
+                const newMap = new window.ymaps.Map(mapContainerRef.current, {
+                  center: [43.222, 76.8512],
+                  zoom: 12,
+                });
+
+                const [startLat, startLng] = order.destination_a_coordinates
+                  .split(",")
+                  .map(Number);
+                const [endLat, endLng] = order.destination_b_coordinates
+                  .split(",")
+                  .map(Number);
+
+                const startMarker = new window.ymaps.Placemark(
+                  [startLat, startLng],
+                  {
+                    balloonContent: "Pickup location",
+                  }
+                );
+                const endMarker = new window.ymaps.Placemark([endLat, endLng], {
+                  balloonContent: "Destination",
+                });
+
+                newMap.geoObjects.add(startMarker);
+                newMap.geoObjects.add(endMarker);
+
+                window.ymaps
+                  .route(
+                    [
+                      [startLat, startLng],
+                      [endLat, endLng],
+                    ],
+                    {
+                      mapStateAutoApply: true,
+                    }
+                  )
+                  .then((route: any) => {
+                    const distance = route.getHumanLength();
+                    setRouteDistance(distance);
+                  });
+
+                setMap(newMap);
+              };
+              initMap();
+            });
+          }
+        }}
       />
     </div>
   );

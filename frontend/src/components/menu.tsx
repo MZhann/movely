@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Menu as MenuIcon, Navigation, X } from "lucide-react";
+import Link from "next/link";
 
 const menuItems = [
   { label: "Главная", href: "/main" },
@@ -19,9 +20,9 @@ export default function Menu() {
     <>
       {/* Desktop menu */}
       <nav className="hidden lg:flex items-center justify-between bg-zinc-900 px-8 py-4 z-50">
-        <div className="text-2xl font-bold text-yellow-400 flex items-center gap-2">
+        <Link href={'/main'} className="text-2xl font-bold text-yellow-400 flex items-center gap-2">
           <p>Movely</p> <Navigation className="text-yellow-500" />
-        </div>
+        </Link>
         <ul className="flex gap-8">
           {menuItems.map((item) => (
             <li key={item.href}>
