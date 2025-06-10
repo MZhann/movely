@@ -5,6 +5,7 @@ import Menu from "../../components/menu";
 import AddressSearch from "../../components/AddressSearch";
 import axios from "axios";
 import { Navigation } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 declare global {
   interface Window {
@@ -18,6 +19,7 @@ interface Point {
 }
 
 export default function MainPage() {
+  const { toast } = useToast();
   const mapRef = useRef<any>(null);
   const [ymapsLoaded, setYmapsLoaded] = useState(false);
   const [mode, setMode] = useState<"idle" | "setA" | "setB">("idle");
@@ -187,6 +189,11 @@ export default function MainPage() {
       const token = localStorage.getItem("accessToken");
       if (!token) {
         console.error("No access token found.");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No access token found. Please log in again.",
+        });
         return;
       }
 
@@ -199,10 +206,17 @@ export default function MainPage() {
       setShowModal(false);
       setPrice("");
       setComment("");
-      alert("Заказ отправлен!");
+      toast({
+        title: "Success!",
+        description: "Order has been sent successfully!",
+      });
     } catch (error) {
       console.error("Error creating order:", error);
-      alert("Ошибка при создании заказа.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create order. Please try again.",
+      });
     }
   };
 

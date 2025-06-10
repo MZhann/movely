@@ -57,7 +57,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/api/auth/register", { ...data, role: "customer" });
+      await api.post("/auth/register", { ...data, role: "customer" });
       setSuccess(true);
     } catch (e: any) {
       setError(e.response?.data?.message || "Registration failed");
@@ -70,7 +70,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/api/auth/register", { ...data, role: "worker" });
+      await api.post("/auth/register", { ...data, role: "worker" });
       setSuccess(true);
     } catch (e: any) {
       setError(e.response?.data?.message || "Registration failed");
@@ -94,12 +94,24 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-[#151513] text-white">
-      <button className="absolute top-10 left-10" onClick={() => router.push('/')}>
+    <div className="relative min-h-screen flex items-center justify-center text-white overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div
+        className="absolute inset-0 bg-cover bg-center "
+        style={{
+          backgroundImage: `url('/street-bg.png')`,
+          filter: "blur(8px) brightness(50%)",
+          transform: "scale(1.05)", // Slightly zoom to cover blur edges
+        }}
+      ></div>
+      <button
+        className="absolute top-10 left-10 relative z-10"
+        onClick={() => router.push("/")}
+      >
         <CircleArrowLeft />
       </button>
 
-      <div className="bg-[#151513] p-8 rounded-xl  w-full max-w-md">
+      <div className="bg-[#151513] p-8 rounded-xl  w-full max-w-md relative z-10">
         <h2 className="text-2xl font-bold mb-6 text-center">
           Create an account
         </h2>

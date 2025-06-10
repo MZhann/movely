@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { Roboto_Flex } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { Providers } from "./providers";
+import { Toaster } from "@/components/ui/toaster";
+import Providers from "@/components/Providers";
 
-const roboto = Roboto_Flex({ subsets: ["latin"], variable: "--font-roboto" });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Movely",
-  description: "Your car maintenance companion",
+  description: "Your travel companion",
 };
 
 export default function RootLayout({
@@ -17,8 +18,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={roboto.className}>
-        <Providers>{children}</Providers>
+      <body className={inter.className}>
+        <Providers>
+          {children}
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

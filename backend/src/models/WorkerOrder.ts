@@ -24,8 +24,37 @@ const workerOrderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    driver_location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number],
+        default: [0, 0],
+      },
+    },
+    estimated_arrival_time: { type: Date },
+    accepted_at: { type: Date },
+    current_driver_location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number],
+        default: [0, 0],
+      },
+    },
+    last_location_update: { type: Date },
   },
   { timestamps: true }
 );
+
+// Create a 2dsphere index for geospatial queries
+workerOrderSchema.index({ driver_location: "2dsphere" });
+workerOrderSchema.index({ current_driver_location: "2dsphere" });
 
 export const WorkerOrder = mongoose.model("WorkerOrder", workerOrderSchema);

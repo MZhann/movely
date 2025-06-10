@@ -32,12 +32,13 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.post("/api/auth/login", data);
+      const response = await api.post("/auth/login", data);
       // console.log(response.data);
       // alert(response.data.message);
       const { token, userId, name, role } = response.data; // Destructure userId, name, and role
 
       localStorage.setItem("accessToken", token);
+      localStorage.setItem("role", role);
       localStorage.setItem("userId", userId); // Store user ID
       localStorage.setItem("userName", name); // Store user name
 
@@ -68,14 +69,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-900 text-white relative">
-      <div className="absolute top-10 left-10">
+    <div className="min-h-screen flex items-center justify-center text-white relative overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div
+        className="absolute inset-0 bg-cover bg-center "
+        style={{
+          backgroundImage: `url('/street-bg.png')`,
+          filter: "blur(8px) brightness(50%)",
+          transform: "scale(1.05)", // Slightly zoom to cover blur edges
+        }}
+      ></div>
+      <div className="absolute top-10 left-10 relative z-10">
         <button className="" onClick={() => router.push("/")}>
           <CircleArrowLeft />
         </button>
       </div>
 
-      <div className="bg-zinc-900 p-8 rounded-xl w-full max-w-md">
+      <div className="bg-zinc-900 p-8 rounded-xl w-full max-w-md relative z-10">
         <h2 className="text-2xl font-bold mb-6 text-center">Log In</h2>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
           <input

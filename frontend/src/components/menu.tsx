@@ -6,6 +6,9 @@ const menuItems = [
   { label: "Главная", href: "/main" },
   { label: "Мои заказы", href: "/history" },
   { label: "Профиль", href: "/profile" },
+  { label: "Авиабилеты", href: "/tickets" },
+  { label: "ЖД билеты", href: "/trains" },
+  { label: "Мои билеты", href: "/my-tickets" },
   // Add more items as needed
 ];
 
@@ -15,7 +18,7 @@ export default function Menu() {
   return (
     <>
       {/* Desktop menu */}
-      <nav className="hidden lg:flex items-center justify-between bg-zinc-900 px-8 py-4">
+      <nav className="hidden lg:flex items-center justify-between bg-zinc-900 px-8 py-4 z-50">
         <div className="text-2xl font-bold text-yellow-400 flex items-center gap-2">
           <p>Movely</p> <Navigation className="text-yellow-500" />
         </div>
@@ -34,7 +37,7 @@ export default function Menu() {
       </nav>
 
       {/* Mobile burger */}
-      <div className="flex lg:hidden items-center bg-zinc-900 px-4 py-4">
+      <div className="flex lg:hidden items-center bg-zinc-900 px-4 py-4 z-50">
         <button
           className="text-white"
           onClick={() => setOpen(true)}

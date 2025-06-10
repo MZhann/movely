@@ -3,6 +3,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Script from "next/script";
 import Menu from "../../../../components/menu";
+import axios from "axios";
+import { useToast } from "../../../../components/ui/use-toast";
 
 interface Order {
   _id: string;
@@ -16,27 +18,167 @@ interface Order {
   destination_b_coordinates: string;
   ride_time: string;
   status: string;
+  worker_id: string;
 }
 
 export default function OrderPage() {
   const params = useParams();
   const router = useRouter();
-  const mapRef = useRef<any>(null);
+  const { toast } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [ymapsLoaded, setYmapsLoaded] = useState(false);
-  const [routeDistance, setRouteDistance] = useState<string | null>(null);
+  const [map, setMap] = useState<any>(null);
+  const [routeDistance, setRouteDistance] = useState<string>("");
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [locationInterval, setLocationInterval] =
+    useState<NodeJS.Timeout | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+          router.push("/login");
+          return;
+        }
+
+        const response = await axios.get(
+          `http://localhost:5000/api/worker_orders/${params.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        setOrder(response.data);
+      } catch (error) {
+        console.error("Error fetching order:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch order details",
+        });
+      }
+    };
+
     fetchOrder();
-  }, [params.id]);
+  }, [params.id, router, toast]);
 
-  const fetchOrder = async () => {
+  useEffect(() => {
+    if (!order || !mapContainerRef.current) return;
+
+    const initMap = () => {
+      const ymaps = (window as any).ymaps;
+      if (!ymaps) return;
+
+      const newMap = new ymaps.Map(mapContainerRef.current, {
+        center: [43.222, 76.8512], // Default to Almaty
+        zoom: 12,
+      });
+
+      // Add destination markers
+      const [startLat, startLng] = order.destination_a_coordinates
+        .split(",")
+        .map(Number);
+      const [endLat, endLng] = order.destination_b_coordinates
+        .split(",")
+        .map(Number);
+
+      const startMarker = new ymaps.Placemark([startLat, startLng], {
+        balloonContent: "Pickup location",
+      });
+      const endMarker = new ymaps.Placemark([endLat, endLng], {
+        balloonContent: "Destination",
+      });
+
+      newMap.geoObjects.add(startMarker);
+      newMap.geoObjects.add(endMarker);
+
+      // Create route
+      ymaps
+        .route(
+          [
+            [startLat, startLng],
+            [endLat, endLng],
+          ],
+          {
+            mapStateAutoApply: true,
+          }
+        )
+        .then((route: any) => {
+          const distance = route.getHumanLength();
+          setRouteDistance(distance);
+        });
+
+      setMap(newMap);
+    };
+
+    if ((window as any).ymaps) {
+      initMap();
+    }
+  }, [order]);
+
+  const startLocationUpdates = () => {
+    if (locationInterval) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const position = await new Promise<GeolocationPosition>(
+          (resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject);
+          }
+        );
+
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+
+        await axios.patch(
+          `http://localhost:5000/api/worker_orders/${params.id}/location`,
+          {
+            coordinates: [position.coords.latitude, position.coords.longitude],
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      } catch (error) {
+        console.error("Error updating location:", error);
+      }
+    }, 10000); // Update every 10 seconds
+
+    setLocationInterval(interval);
+  };
+
+  const stopLocationUpdates = () => {
+    if (locationInterval) {
+      clearInterval(locationInterval);
+      setLocationInterval(null);
+    }
+  };
+
+  const handleAcceptRide = async () => {
     try {
+      setIsAccepting(true);
       const token = localStorage.getItem("accessToken");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
 
-      const response = await fetch(
-        `http://localhost:5000/api/worker_orders/${params.id}`,
+      // Get current location
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        }
+      );
+
+      await axios.patch(
+        `http://localhost:5000/api/worker_orders/${params.id}/accept`,
+        {
+          coordinates: [position.coords.latitude, position.coords.longitude],
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -44,229 +186,164 @@ export default function OrderPage() {
         }
       );
 
-      const data = await response.json();
-      setOrder(data);
+      startLocationUpdates();
+      toast({
+        title: "Success",
+        description: "Ride accepted successfully",
+      });
     } catch (error) {
-      console.error("Error fetching order:", error);
+      console.error("Error accepting ride:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to accept ride",
+      });
     } finally {
-      setLoading(false);
+      setIsAccepting(false);
     }
   };
 
-  // Initialize map and draw route
-  useEffect(() => {
-    console.log(
-      "ymapsLoaded:",
-      ymapsLoaded,
-      "order:",
-      order,
-      "mapRef.current:",
-      mapRef.current
-    );
-    if (ymapsLoaded && window.ymaps && order) {
-      window.ymaps.ready(() => {
-        console.log("Yandex Maps API is ready.");
-        const [latA, lonA] = order.destination_a_coordinates
-          .split(",")
-          .map(Number);
-        const [latB, lonB] = order.destination_b_coordinates
-          .split(",")
-          .map(Number);
+  const handleCompleteRide = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
 
-        console.log("Coordinates A:", [latA, lonA], "Coordinates B:", [
-          latB,
-          lonB,
-        ]);
-
-        // Calculate center point
-        const centerLat = (latA + latB) / 2;
-        const centerLon = (lonA + lonB) / 2;
-
-        if (!mapRef.current) {
-          mapRef.current = new window.ymaps.Map("yandex-map", {
-            center: [centerLat, centerLon],
-            zoom: 12,
-          });
-          console.log("Map initialized.");
-        } else {
-          mapRef.current.setCenter([centerLat, centerLon], 12);
-          mapRef.current.geoObjects.removeAll(); // Clear existing objects
-          console.log("Map updated and cleared.");
+      await axios.patch(
+        `http://localhost:5000/api/worker_orders/${params.id}/complete`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
 
-        // Add markers
-        const placemarkA = new window.ymaps.Placemark(
-          [latA, lonA],
-          { balloonContent: "A" },
-          { preset: "islands#greenDotIcon" }
-        );
-        const placemarkB = new window.ymaps.Placemark(
-          [latB, lonB],
-          { balloonContent: "B" },
-          { preset: "islands#redDotIcon" }
-        );
-
-        mapRef.current.geoObjects.add(placemarkA);
-        mapRef.current.geoObjects.add(placemarkB);
-        console.log("Markers added.");
-
-        // Draw route
-        window.ymaps
-          .route([
-            [latA, lonA],
-            [latB, lonB],
-          ])
-          .then(
-            function (route: any) {
-              mapRef.current.geoObjects.add(route);
-              console.log("Route added to map.", route);
-              // Extract and display distance
-              const distance = route.getHumanLength();
-              setRouteDistance(distance);
-              console.log("Route distance:", distance);
-            },
-            function (error: any) {
-              console.error("Yandex Maps routing error:", error);
-            }
-          );
+      stopLocationUpdates();
+      toast({
+        title: "Success",
+        description: "Ride completed successfully",
+      });
+      router.push("/worker");
+    } catch (error) {
+      console.error("Error completing ride:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to complete ride",
       });
     }
-  }, [ymapsLoaded, order]);
-
-  const handleTakeOrder = async () => {
-    try {
-      const token = localStorage.getItem("accessToken");
-
-      const response = await fetch(
-        `http://localhost:5000/api/worker_orders/${params.id}/take`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            status: "in_progress",
-            start_date: new Date().toISOString(),
-          }),
-        }
-      );
-
-      if (response.ok) {
-        router.push("/worker");
-      }
-    } catch (error) {
-      console.error("Error taking order:", error);
-    }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
-      </div>
-    );
-  }
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p className="text-xl">Заказ не найден</p>
+      <div className="min-h-screen bg-zinc-950 text-white">
+        <Menu />
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse">Loading...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <Script
-        src={`https://api-maps.yandex.ru/2.1/?apikey=${process.env.NEXT_PUBLIC_YANDEX_MAP_API_KEY}&lang=ru_RU`}
-        strategy="afterInteractive"
-        onLoad={() => setYmapsLoaded(true)}
-      />
+    <div className="min-h-screen bg-zinc-950 text-white">
       <Menu />
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Детали заказа</h1>
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition"
-          >
-            Назад
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Map */}
-          <div className="bg-zinc-900 rounded-xl overflow-hidden">
-            <div id="yandex-map" style={{ width: "100%", height: "400px" }} />
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="bg-zinc-900 rounded-xl p-6">
+              <h2 className="text-xl font-semibold mb-4">Order Details</h2>
+              <div
+                ref={mapContainerRef}
+                className="w-full h-[500px] rounded-lg mb-6"
+              />
+            </div>
           </div>
 
-          {/* Order Details */}
           <div className="space-y-6">
             <div className="bg-zinc-900 rounded-xl p-6">
-              <h2 className="text-xl font-semibold mb-4">
-                Информация о заказе
-              </h2>
-
+              <h2 className="text-xl font-semibold mb-4">Order Information</h2>
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-gray-400">Клиент</p>
+                  <p className="text-sm text-gray-400">Client</p>
                   <p className="font-medium">{order.name}</p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-400">Дата создания</p>
+                  <p className="text-sm text-gray-400">Date</p>
                   <p className="font-medium">
                     {new Date(order.date).toLocaleString()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-400">Цена</p>
+                  <p className="text-sm text-gray-400">Price</p>
                   <p className="font-medium text-yellow-500">{order.price} ₸</p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-400">Откуда</p>
+                  <p className="text-sm text-gray-400">From</p>
                   <p className="font-medium">{order.destination_a}</p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-400">Куда</p>
+                  <p className="text-sm text-gray-400">To</p>
                   <p className="font-medium">{order.destination_b}</p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-400">Время в пути</p>
+                  <p className="text-sm text-gray-400">Ride Time</p>
                   <p className="font-medium">{order.ride_time}</p>
                 </div>
 
                 {routeDistance && (
                   <div>
-                    <p className="text-sm text-gray-400">Расстояние маршрута</p>
+                    <p className="text-sm text-gray-400">Route Distance</p>
                     <p className="font-medium">{routeDistance}</p>
                   </div>
                 )}
 
                 {order.comment && (
                   <div>
-                    <p className="text-sm text-gray-400">Комментарий</p>
+                    <p className="text-sm text-gray-400">Comment</p>
                     <p className="font-medium">{order.comment}</p>
                   </div>
                 )}
+
+                <div className="pt-4">
+                  {order.status === "active" && !order.worker_id && (
+                    <button
+                      onClick={handleAcceptRide}
+                      disabled={isAccepting}
+                      className="w-full bg-yellow-500 text-black font-semibold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50"
+                    >
+                      {isAccepting ? "Accepting..." : "Accept Ride"}
+                    </button>
+                  )}
+
+                  {order.status === "in_progress" &&
+                    order.worker_id === localStorage.getItem("userId") && (
+                      <button
+                        onClick={handleCompleteRide}
+                        className="w-full bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors"
+                      >
+                        Complete Ride
+                      </button>
+                    )}
+                </div>
               </div>
             </div>
-
-            <button
-              onClick={handleTakeOrder}
-              className="w-full py-4 rounded-xl bg-gradient-to-b from-yellow-300 to-yellow-500 to-orange-600 text-black font-semibold text-lg hover:from-yellow-400 transition-all"
-            >
-              Взять заказ
-            </button>
           </div>
         </div>
       </div>
+
+      <Script
+        src="https://api-maps.yandex.ru/2.1/?apikey=YOUR_API_KEY&lang=en_US"
+        strategy="afterInteractive"
+      />
     </div>
   );
 }

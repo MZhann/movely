@@ -61,25 +61,55 @@ export default function OrderHistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+      <div className="min-h-screen text-white flex items-center justify-center relative overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div
+          className="absolute inset-0 bg-cover bg-center "
+          style={{
+            backgroundImage: `url('/street-bg.png')`,
+            filter: "blur(8px) brightness(50%)",
+            transform: "scale(1.05)", // Slightly zoom to cover blur edges
+          }}
+        ></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500 relative z-10"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p className="text-xl text-red-500">{error}</p>
+      <div className="min-h-screen text-white flex items-center justify-center relative overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div
+          className="absolute inset-0 bg-cover bg-center "
+          style={{
+            backgroundImage: `url('/street-bg.png')`,
+            filter: "blur(8px) brightness(50%)",
+            transform: "scale(1.05)", // Slightly zoom to cover blur edges
+          }}
+        ></div>
+        <p className="text-xl text-red-500 relative z-10">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <Menu />
+    <div className="min-h-screen text-white relative overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div
+        className="absolute inset-0 bg-cover bg-center "
+        style={{
+          backgroundImage: `url('/street-bg.png')`,
+          filter: "blur(8px) brightness(50%)",
+          transform: "scale(1.05)", // Slightly zoom to cover blur edges
+        }}
+      ></div>
+      <div className="relative z-50">
+        {/* Wrapper for Menu with high z-index */}
+        <Menu />
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
         <h1 className="text-3xl font-bold mb-8">Мои заказы</h1>
 
         {orders.length === 0 ? (

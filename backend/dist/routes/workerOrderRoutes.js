@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const workerOrderController_1 = require("../controllers/workerOrderController");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
+router.get("/", auth_1.protect, workerOrderController_1.getWorkerOrders);
+router.get("/:id", auth_1.protect, workerOrderController_1.getWorkerOrder);
+router.post("/", auth_1.protect, workerOrderController_1.createWorkerOrder);
+router.patch("/:id/accept", auth_1.protect, workerOrderController_1.acceptWorkerOrder);
+router.patch("/:id/location", auth_1.protect, workerOrderController_1.updateDriverLocation);
+router.patch("/:id/complete", auth_1.protect, workerOrderController_1.completeWorkerOrder);
+exports.default = router;
